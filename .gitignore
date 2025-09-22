@@ -1,0 +1,8 @@
+# Git ignore for Julia projects and common OS/editor files
+/.julia
+/.vscode
+*.jl~
+*.swp
+*.bak
+venv/
+__pycache__/
