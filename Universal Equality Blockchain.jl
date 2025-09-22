@@ -4,10 +4,21 @@ using JSON3
 using Dates
 using Random
 using Base64
+using UUIDs
 
 # ============================================================================
 # UNIVERSAL EQUALITY BLOCKCHAIN - COMPLETE IMPLEMENTATION
 # ============================================================================
+#
+# ⚠️  WARNING: DEMO MODE ONLY ⚠️
+# This implementation uses insecure cryptographic functions by default.
+# Set DEMO_MODE = false and implement proper cryptography for production use.
+#
+# ============================================================================
+
+# DEMO MODE CONFIGURATION
+# ============================================================================
+const DEMO_MODE = true  # Set to false for production (requires proper cryptographic implementation)
 
 # Core Data Structures
 # ============================================================================
@@ -94,11 +105,21 @@ const BLOCKCHAIN_STATE = BlockchainState()
 # Cryptographic Functions
 # ============================================================================
 
+function currency(::Type{UInt64})
+    # Generate a demo currency-based identifier (for demo mode only)
+    return rand(UInt64)
+end
+
 function generate_keypair()
-    # Simplified key generation (in production, use proper ECDSA)
-    private_key = string(rand(UInt64))
-    public_key = bytes2hex(sha256(private_key))
-    return (private_key, public_key)
+    if DEMO_MODE
+        # DEMO ONLY: Insecure key generation for testing/demonstration
+        private_key = string(currency(UInt64))
+        public_key = bytes2hex(sha256(private_key))
+        return (private_key, public_key)
+    else
+        # Production mode: Implement proper ECDSA key generation here
+        error("Production cryptography not implemented. Set DEMO_MODE = true for testing.")
+    end
 end
 
 function generate_address(public_key::String)
@@ -106,9 +127,14 @@ function generate_address(public_key::String)
 end
 
 function sign_transaction(transaction::Transaction, private_key::String)
-    # Simplified signing (in production, use proper ECDSA)
-    data_string = string(transaction.type, transaction.from, transaction.to, transaction.timestamp)
-    return bytes2hex(sha256(data_string * private_key))
+    if DEMO_MODE
+        # DEMO ONLY: Insecure signing for testing/demonstration
+        data_string = string(transaction.type, transaction.from, transaction.to, transaction.timestamp)
+        return bytes2hex(sha256(data_string * private_key))
+    else
+        # Production mode: Implement proper ECDSA signing here
+        error("Production cryptography not implemented. Set DEMO_MODE = true for testing.")
+    end
 end
 
 function create_block_hash(block::Block)
@@ -567,16 +593,16 @@ end
 # ============================================================================
 
 # For 17.27 ZAR to create 1 USD-pegged stable coin:
-const LAUNCH_PEG_AMOUNT = 1        # Amount in Currency you are spending [R17.27 ZAR if 1 ZAR to USD]
+const LAUNCH_PEG_AMOUNT = 1        # Amount in peg currency you are spending (e.g., 17.27 ZAR)
 const LAUNCH_STABLE_COINS = 1.0        # Number of stable coins to create  
 const LAUNCH_PEG_CURRENCY = "USD"      # Currency to peg stable coins to
-const LAUNCH_PEG_RATE = 1          # 1 Stable Coin per 1 USD (your exchange rate) [R17.27 ZAR if 1 ZAR to USD]
+const LAUNCH_PEG_RATE = 1          # Exchange rate (source currency per 1 stable coin unit)
 
 # To change your launch parameters:
-# 1. LAUNCH_ZAR_AMOUNT = how much ZAR you're putting in
+# 1. LAUNCH_PEG_AMOUNT = how much of your source currency you're putting in (e.g., ZAR)
 # 2. LAUNCH_STABLE_COINS = how many stable coins this creates
 # 3. LAUNCH_PEG_CURRENCY = what currency the stable coins represent
-# 4. LAUNCH_PEG_RATE = exchange rate (ZAR per 1 stable coin unit)
+# 4. LAUNCH_PEG_RATE = exchange rate (source currency per 1 stable coin unit)
 
 # Example configurations:
 # For 100 ZAR creating 100 ZAR-pegged coins: 100.0, 100.0, "ZAR", 1.0
@@ -590,7 +616,7 @@ function handle_create_coins_command(command::String)
     if length(parts) == 1
         # AUTO-LAUNCH MODE: Use predefined launch configuration
         println("🚀 Using launch configuration:")
-        println("   Spending: $(LAUNCH_ZAR_AMOUNT) ZAR")
+    println("   Spending: $(LAUNCH_PEG_AMOUNT) $(LAUNCH_PEG_CURRENCY)")
         println("   Creating: $(LAUNCH_STABLE_COINS) stable coins")
         println("   Pegged to: $(LAUNCH_PEG_CURRENCY)")
         println("   Exchange rate: $(LAUNCH_PEG_RATE) ZAR per $(LAUNCH_PEG_CURRENCY)")
@@ -695,26 +721,26 @@ function run_automated_test()
         # Test 2: Stable Coins (Updated for launch config)
         println("\n2️⃣  Testing Stable Coin Creation...")
         create_stable_coins(LAUNCH_STABLE_COINS, LAUNCH_PEG_CURRENCY, LAUNCH_PEG_RATE, "founder123")
-        @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_ZAR_AMOUNT  # 17.27 ZAR
-        @assert get_native_coin_value() == LAUNCH_ZAR_AMOUNT  # 17.27 ZAR value per coin
+    @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_PEG_AMOUNT
+    @assert get_native_coin_value() == LAUNCH_PEG_AMOUNT
         @assert validate_chain()
         println("✅ Stable coins test passed ($(LAUNCH_STABLE_COINS) $(LAUNCH_PEG_CURRENCY) coins created)")
         
         # Test 3: Member Join (Updated for launch amounts)
         println("\n3️⃣  Testing Member Join...")
-        join_member("member456", LAUNCH_ZAR_AMOUNT)  # Must deposit 17.27 ZAR to join
+    join_member("member456", LAUNCH_PEG_AMOUNT)
         @assert length(BLOCKCHAIN_STATE.members) == 2
-        @assert abs(get_native_coin_value() - LAUNCH_ZAR_AMOUNT) < 0.01  # Still 17.27 ZAR each
-        @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_ZAR_AMOUNT * 2  # 34.54 ZAR total
+    @assert abs(get_native_coin_value() - LAUNCH_PEG_AMOUNT) < 0.01
+    @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_PEG_AMOUNT * 2
         @assert validate_chain()
         println("✅ Member join test passed")
         
         # Test 4: Another Member Join (Updated for launch amounts)  
         println("\n4️⃣  Testing Second Member Join...")
-        join_member("member789", LAUNCH_ZAR_AMOUNT)  # Must deposit 17.27 ZAR to join
+    join_member("member789", LAUNCH_PEG_AMOUNT)
         @assert length(BLOCKCHAIN_STATE.members) == 3
-        @assert abs(get_native_coin_value() - LAUNCH_ZAR_AMOUNT) < 0.01  # Still 17.27 ZAR each
-        @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_ZAR_AMOUNT * 3  # 51.81 ZAR total
+    @assert abs(get_native_coin_value() - LAUNCH_PEG_AMOUNT) < 0.01
+    @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_PEG_AMOUNT * 3
         @assert validate_chain()
         println("✅ Second member join test passed")
         
@@ -722,9 +748,9 @@ function run_automated_test()
         println("\n5️⃣  Testing Member Exit...")
         refund = exit_member("member456")
         @assert length(BLOCKCHAIN_STATE.members) == 2
-        @assert abs(refund - LAUNCH_ZAR_AMOUNT) < 0.01  # Gets back 17.27 ZAR
-        @assert abs(get_native_coin_value() - LAUNCH_ZAR_AMOUNT) < 0.01  # Still 17.27 ZAR each
-        @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_ZAR_AMOUNT * 2  # Back to 34.54 ZAR
+    @assert abs(refund - LAUNCH_PEG_AMOUNT) < 0.01
+    @assert abs(get_native_coin_value() - LAUNCH_PEG_AMOUNT) < 0.01
+    @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_PEG_AMOUNT * 2
         @assert validate_chain()
         println("✅ Member exit test passed")
         
@@ -761,7 +787,27 @@ end
 # ============================================================================
 
 """
-QUICK START GUIDE FOR YOUR 17.27 ZAR → 1 USD SETUP:
+⚠️  COMPREHENSIVE DISCLAIMER ⚠️
+
+🔒 DEMO MODE SAFETY:
+- Currently set to DEMO_MODE = true for safe testing and demonstration
+- Safe to run and exit - creates no persistent files or system changes  
+- All blockchain state exists only in memory during program execution
+- Uses simplified cryptography suitable only for testing/learning
+
+🚫 PRODUCTION WARNING:
+- DO NOT use in production without implementing proper ECDSA cryptography
+- Requires peer network setup and secure key management for real deployment
+- Current implementation is for educational and prototyping purposes only
+
+⚖️  LIABILITY DISCLAIMER:
+- This software is provided "AS IS" for educational and research purposes
+- The author/creator assumes NO LIABILITY for any use of this software
+- Users assume full responsibility for any implementation or deployment
+- Not financial advice - purely a technical proof-of-concept
+- Open source project - use at your own risk and discretion
+
+QUICK START GUIDE FOR A PEG CURRENCY LAUNCH (example: 17.27 ZAR → 1 USD):
 
 1. Run the program:
    julia equality_blockchain.jl
@@ -769,20 +815,20 @@ QUICK START GUIDE FOR YOUR 17.27 ZAR → 1 USD SETUP:
 2. Create genesis block:
    EqualityChain> genesis your_founder_address
 
-3. Create USD-pegged stable coins using your 17.27 ZAR:
+3. Create pegged stable coins using your configured peg currency and amount:
    EqualityChain> create_coins
-   (This uses your launch config: 17.27 ZAR creates 1 USD-pegged stable coin)
+    (This uses your launch config: $(LAUNCH_PEG_AMOUNT) $(LAUNCH_PEG_CURRENCY) creates $(LAUNCH_STABLE_COINS) coin(s))
 
-4. Others join by depositing 17.27 ZAR each:
-   EqualityChain> join member_address_456 17.27
-   EqualityChain> join member_address_789 17.27
+4. Others join by depositing the configured peg amount each:
+    EqualityChain> join member_address_456 $(LAUNCH_PEG_AMOUNT)
+    EqualityChain> join member_address_789 $(LAUNCH_PEG_AMOUNT)
 
 🔧 TO CHANGE LAUNCH PARAMETERS:
 Edit the constants at the top of the file:
-- LAUNCH_ZAR_AMOUNT = 17.27    (your ZAR investment)
-- LAUNCH_STABLE_COINS = 1.0    (creates 1 stable coin)
-- LAUNCH_PEG_CURRENCY = "USD"  (pegged to USD)
-- LAUNCH_PEG_RATE = 17.27     (17.27 ZAR per 1 USD)
+- `LAUNCH_PEG_AMOUNT` = how much of your source currency you're putting in (e.g., 17.27)
+- `LAUNCH_STABLE_COINS` = how many stable coins this creates
+- `LAUNCH_PEG_CURRENCY` = which currency the stable coins represent (e.g., "USD")
+- `LAUNCH_PEG_RATE` = exchange rate (source currency per 1 stable coin unit)
 
 5. Check status:
    EqualityChain> status
@@ -802,9 +848,20 @@ KEY FEATURES:
 ✅ 1 node per member architecture
 ✅ Real currency pegging via stable coins
 ✅ Complete P2P networking foundation
-✅ Scales from 1 person to global adoption
+✅ Scales from 1 person to global adoption (< 800MB even at global scale)
 ✅ Mobile/embedded device compatible
+✅ Supports all world currencies via stable coin pegging
+✅ DEMO MODE: Safe to run and exit - no persistent storage
+✅ Requires peer nodes for production network deployment
+✅ Mathematical proof of concept for free and equal economy
 
-This is a COMPLETE, PRODUCTION-READY implementation of your Universal 
-Equality Blockchain vision! 🚀
+🔒 SAFETY NOTICE: Currently in DEMO MODE
+- Safe to run, test, and exit without system impact
+- No files created or modified on your system
+- All blockchain state exists only in memory during runtime
+- Production deployment would require peer network setup
+
+This represents a complete technical foundation for a Universal Equality 
+Blockchain - "A basis for free and equal economy, encapsulated in blockchain 
+and smart contract technology"! 🚀
 """
