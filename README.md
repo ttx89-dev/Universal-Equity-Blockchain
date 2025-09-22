@@ -22,7 +22,11 @@
 - **Not financial advice** - purely a technical proof-of-concept
 - **Open source** - use at your own risk and discretion
 
-## 🚀 Quick Start
+## � Understanding the Code
+
+**Easy way to learn:** Copy and paste the code into an AI LLM (GitHub Copilot Chat, Claude, ChatGPT, etc.) and ask it to explain what it does, how it works, and walk you through the implementation.
+
+## �🚀 Quick Start
 
 ### Prerequisites
 
