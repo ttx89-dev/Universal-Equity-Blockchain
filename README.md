@@ -16,10 +16,10 @@
 - **Simplified crypto** - Current implementation uses demo-grade security only
 
 ### 🛡️ CRITICAL SECURITY REQUIREMENT
-- **ESSENTIAL SAFETY MECHANISM REQUIRED**: Any production implementation MUST enforce equal safety allocation limits
-- **Treasury Protection**: Each user's withdrawal/transfer capacity MUST be limited to their proportional share of stable coins
+- **ESSENTIAL SAFETY MECHANISM REQUIRED**: Any production implementation MUST enforce equal safety allocation "limits"
+- **Treasury Protection**: Each user's withdrawal/transfer capacity MUST be safety capped to their proportional share of stable coins
 - **Prevents Sabotage**: Without this constraint, a single malicious actor could deplete the entire treasury
-- **INTEGRAL DESIGN PRINCIPLE**: Equal distribution requires equal risk limits - no user should access more funds than their peers
+- **INTEGRAL DESIGN PRINCIPLE**: Equal distribution requires equal risk limits - no user should access more funds than their peers without their consent
 - **VITAL FOR SYSTEM INTEGRITY**: This is not optional - it's a foundational requirement for treasury security
 
 ### ⚖️ Liability Disclaimer
