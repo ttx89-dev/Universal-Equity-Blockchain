@@ -15,6 +15,13 @@
 - **Requires peer network** setup for real-world deployment
 - **Simplified crypto** - Current implementation uses demo-grade security only
 
+### 🛡️ CRITICAL SECURITY REQUIREMENT
+- **ESSENTIAL SAFETY MECHANISM REQUIRED**: Any production implementation MUST enforce equal safety allocation limits
+- **Treasury Protection**: Each user's withdrawal/transfer capacity MUST be limited to their proportional share of stable coins
+- **Prevents Sabotage**: Without this constraint, a single malicious actor could deplete the entire treasury
+- **INTEGRAL DESIGN PRINCIPLE**: Equal distribution requires equal risk limits - no user should access more funds than their peers
+- **VITAL FOR SYSTEM INTEGRITY**: This is not optional - it's a foundational requirement for treasury security
+
 ### ⚖️ Liability Disclaimer
 - This software is provided **"AS IS"** for educational and research purposes
 - **NO LIABILITY** assumed by author/creator for any use of this software
