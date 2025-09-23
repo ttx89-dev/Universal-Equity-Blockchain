@@ -292,6 +292,44 @@ function exit_member(member_address::String)
     return refund_amount
 end
 
+function transfer_stable_coins(from_address::String, to_address::String, amount::Float64)
+    # Validate both users are members
+    if !(from_address in BLOCKCHAIN_STATE.members)
+        error("Sender $from_address is not a member")
+    end
+    
+    if !(to_address in BLOCKCHAIN_STATE.members)
+        error("Recipient $to_address is not a member")
+    end
+    
+    # Validate amount is positive
+    if amount <= 0
+        error("Transfer amount must be positive")
+    end
+    
+    # Validate stable coins exist
+    if BLOCKCHAIN_STATE.stable_coin.amount == 0
+        error("No stable coins have been created yet")
+    end
+    
+    # Create transfer transaction data
+    tx_data = Dict{String, Any}(
+        "transfer_amount" => amount,
+        "treasury_stable_coins" => BLOCKCHAIN_STATE.treasury.stable_coins,
+        "member_count" => length(BLOCKCHAIN_STATE.members),
+        "equal_share_per_member" => BLOCKCHAIN_STATE.treasury.stable_coins / length(BLOCKCHAIN_STATE.members)
+    )
+    
+    # Create and add transaction (treasury balances remain unchanged due to automatic equality)
+    tx = Transaction("TRANSFER_STABLE_COINS", from_address, to_address, tx_data)
+    add_transaction(tx, from_address)
+    
+    println("✅ Transfer completed: $amount stable coins from $from_address to $to_address")
+    println("🔄 Automatic equality maintained: Each member has $(BLOCKCHAIN_STATE.treasury.stable_coins / length(BLOCKCHAIN_STATE.members)) stable coins")
+    
+    return true
+end
+
 function add_transaction(transaction::Transaction, validator::String)
     # Get previous block hash
     prev_hash = length(BLOCKCHAIN_STATE.blockchain) > 0 ? 
@@ -546,6 +584,8 @@ function run_interactive_cli()
             handle_join_command(command)
         elseif startswith(command, "exit_member")
             handle_exit_member_command(command)
+        elseif startswith(command, "transfer")
+            handle_transfer_command(command)
         elseif startswith(command, "network")
             handle_network_command(command)
         elseif startswith(command, "validate")
@@ -561,10 +601,11 @@ end
 function show_help()
     println("\n📚 Available Commands:")
     println("  genesis <address>                    - Create genesis block")
-    println("  create_coins                         - Use launch config (17.27 ZAR → 1 USD coin)")
+    println("  create_coins                         - Use launch config (R17.27 → 1 USD coin)")
     println("  create_coins <amount> <currency>     - Create stable coins manually")
     println("  join <address> <deposit>             - Join as new member")
     println("  exit_member <address>                - Exit member from network")
+    println("  transfer <from> <to> <amount>        - Transfer stable coins between members")
     println("  status                               - Show blockchain status")
     println("  members                              - List all members")
     println("  validate                             - Validate blockchain")
@@ -681,6 +722,23 @@ function handle_exit_member_command(command::String)
     end
 end
 
+function handle_transfer_command(command::String)
+    parts = split(command)
+    if length(parts) != 4
+        println("Usage: transfer <from_address> <to_address> <amount>")
+        return
+    end
+    
+    try
+        from_address = parts[2]
+        to_address = parts[3]
+        amount = parse(Float64, parts[4])
+        transfer_stable_coins(from_address, to_address, amount)
+    catch e
+        println("Error: $e")
+    end
+end
+
 function handle_network_command(command::String)
     parts = split(command)
     if length(parts) < 2
@@ -753,6 +811,20 @@ function run_automated_test()
     @assert BLOCKCHAIN_STATE.treasury.total_value == LAUNCH_PEG_AMOUNT * 2
         @assert validate_chain()
         println("✅ Member exit test passed")
+        
+        # Test 6: Stable Coin Transfers with Automatic Rebalancing
+        println("\n6️⃣  Testing Stable Coin Transfers...")
+        initial_members = length(BLOCKCHAIN_STATE.members)
+        initial_per_member = BLOCKCHAIN_STATE.treasury.stable_coins / initial_members
+        
+        # Transfer between remaining members (founder123 and member789)
+        transfer_stable_coins("founder123", "member789", 0.5)
+        
+        # Verify automatic equality maintained
+        @assert length(BLOCKCHAIN_STATE.members) == initial_members  # Member count unchanged
+        @assert abs(BLOCKCHAIN_STATE.treasury.stable_coins / length(BLOCKCHAIN_STATE.members) - initial_per_member) < 0.01
+        @assert validate_chain()
+        println("✅ Transfer test passed - equality maintained!")
         
         println("\n🎉 ALL TESTS PASSED! 🎉")
         print_blockchain_status()

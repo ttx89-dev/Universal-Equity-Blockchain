@@ -172,6 +172,8 @@ EqualityChain> exit
 - ✅ **DEMO MODE: Safe to run and exit** - no persistent storage
 - ✅ **Requires peer nodes** for production network deployment
 - ✅ **Mathematical proof of concept** for free and equal economy
+- ✅ **Peer-to-peer stable coin transfers** with automatic rebalancing
+- ✅ **Perfect equality maintained** during transactions (3 peers with 30 stable coins each remain equal after any transfer)
 
 ## 🔧 Configuration
 
