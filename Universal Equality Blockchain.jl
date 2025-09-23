@@ -633,21 +633,21 @@ end
 # LAUNCH CONFIGURATION - EDIT THESE VALUES FOR YOUR SPECIFIC SETUP
 # ============================================================================
 
-# For 17.27 ZAR to create 1 USD-pegged stable coin:
-const LAUNCH_PEG_AMOUNT = 1        # Amount in peg currency you are spending (e.g., 17.27 ZAR)
-const LAUNCH_STABLE_COINS = 1.0        # Number of stable coins to create  
+# For 17.35 ZAR to create 1 USD-pegged stable coin (1:1 USD to stable coin value, backed by current USD to ZAR exchange rate):
+const LAUNCH_PEG_AMOUNT = 17.35        # Amount in ZAR you are spending
+const LAUNCH_STABLE_COINS = 1.0        # Number of USD-pegged stable coins to create (1:1 USD value)
 const LAUNCH_PEG_CURRENCY = "USD"      # Currency to peg stable coins to
-const LAUNCH_PEG_RATE = 1          # Exchange rate (source currency per 1 stable coin unit)
+const LAUNCH_PEG_RATE = 17.35        # Current USD to ZAR exchange rate (17.35 ZAR per 1 USD)
 
 # To change your launch parameters:
-# 1. LAUNCH_PEG_AMOUNT = how much of your source currency you're putting in (e.g., ZAR)
-# 2. LAUNCH_STABLE_COINS = how many stable coins this creates
-# 3. LAUNCH_PEG_CURRENCY = what currency the stable coins represent
-# 4. LAUNCH_PEG_RATE = exchange rate (source currency per 1 stable coin unit)
+# 1. LAUNCH_PEG_AMOUNT = how much ZAR you're investing to back the stable coins
+# 2. LAUNCH_STABLE_COINS = how many USD-pegged stable coins this creates (1:1 USD value)
+# 3. LAUNCH_PEG_CURRENCY = what currency the stable coins represent (USD for global compatibility)
+# 4. LAUNCH_PEG_RATE = current exchange rate (ZAR per 1 USD stable coin)
 
 # Example configurations:
 # For 100 ZAR creating 100 ZAR-pegged coins: 100.0, 100.0, "ZAR", 1.0
-# For 17.27 ZAR creating 1 USD-pegged coin: 17.27, 1.0, "USD", 17.27
+# For 17.35 ZAR creating 1 USD-pegged coin (1:1 USD value): 17.35, 1.0, "USD", 17.35
 # For 50 ZAR creating ~2.9 USD-pegged coins: 50.0, 2.9, "USD", 17.24
 
 # ============================================================================
