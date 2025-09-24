@@ -73,7 +73,7 @@ The system can automatically identifies which external dependencies are costing 
 
 ### The "Living for Free" Progression
 
-The system provides a clear mathematical path from current economic constraints to complete freedom that it could fascilitate:
+The system provides a clear mathematical path from current economic constraints to complete freedom that it could facilitate:
 
 ```julia
 function can_live_for_free(member_id::String)
