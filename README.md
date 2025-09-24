@@ -80,7 +80,7 @@ Notes:
 - `Universal Equality Blockchain.jl` — a separate educational script with interactive commands and documentation below.
 
 ## Disclaimer
-Educational proof‑of‑concept only. Not audited. Do not use in production. Any real deployment requires robust cryptography, consensus, persistent storage, network security, and rigorous economic safety enforcement.
+Educational proof‑of‑concept only. Not audited. Do not use in production. Any real deployment requires robust cryptography, consensus, persistent storage and network security.
 
 ------------------------------
 # Universal Equality Blockchain
