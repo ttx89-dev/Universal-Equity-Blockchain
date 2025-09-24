@@ -54,6 +54,8 @@ This implementation demonstrates how multiple sovereign networks with independen
 
 ## 🔄 The Path to Complete Economic Freedom
 
+*possibilities this system can fasciliate and on blockchain*
+
 ### Natural Market Signals & Self-Optimization
 
 aequchain creates an economic system that naturally evolves toward complete self-sufficiency through intelligent market signaling:
@@ -67,11 +69,11 @@ function calculate_internalization_priority()
 end
 ```
 
-The system automatically identifies which external dependencies are costing the most (through pledge tracking) and creates natural incentives to internalize them. This creates a **virtuous cycle** where the economy becomes increasingly efficient over time.
+The system can automatically identifies which external dependencies are costing the most (through pledge tracking) and creates natural incentives to internalize them. This creates a **virtuous cycle** where the economy becomes increasingly efficient over time.
 
 ### The "Living for Free" Progression
 
-The system provides a clear mathematical path from current economic constraints to complete freedom:
+The system provides a clear mathematical path from current economic constraints to complete freedom that it could fascilitate:
 
 ```julia
 function can_live_for_free(member_id::String)
