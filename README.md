@@ -1,4 +1,46 @@
-# aequchain
+# aequchain - Universal Equidistributed Blockchain
+
+## Overview
+
+aequchain is a Universal Equidistributed Blockchain (UEB) designed to facilitate **multiple nations AND multiple business networks** with their own denominations, whilst maintaining **global exchange rates at PEG** and preserving **100% equality per member** throughout the entire chain.
+
+## Key Features
+
+### Multi-National & Multi-Network Support
+- **Multiple Nations**: Support for different national currencies and economic systems
+- **Multiple Business Networks**: Independent business ecosystems within different networks
+- **Own Denominations**: Each network can have its own currency denomination (USD, ZAR, EUR, etc.)
+- **Automated PEG Exchange Rates**: Maintains global exchange rates between denominations (e.g., 1 USD = 17.35 ZAR)
+
+### Absolute Equality Guarantee
+- **100% Member Equality**: Every member maintains exactly equal value regardless of which network(s) they participate in
+- **Cross-Network Equality**: A member's value is identical whether expressed in USD, ZAR, or any other network denomination
+- **Exact Precision**: Uses `Rational{BigInt}` for mathematically perfect equality calculations
+
+### Architecture Highlights
+- **Global Treasury**: Single source of truth for total value with exact mathematical precision
+- **Network Independence**: Networks operate independently while maintaining global equality
+- **Business Integration**: Businesses can operate within specific networks while preserving member equality
+- **Multi-Network Membership**: Members can participate in multiple networks simultaneously
+- **Automated Exchange**: Real-time value conversion between different network denominations
+
+## Core Design Principles
+
+1. **Universal Equality**: Every member has exactly equal value at all times
+2. **Multi-Network Scalability**: Unlimited networks with independent denominations
+3. **Global Consistency**: Exchange rates maintained automatically across all networks
+4. **Business Flexibility**: Businesses operate within networks while preserving global equality
+5. **Mathematical Precision**: Exact rational arithmetic prevents any inequality accumulation
+
+## Use Cases
+
+- **International Commerce**: Trade between nations with different currencies while maintaining equality
+- **Multi-National Organizations**: Businesses operating across multiple countries/currencies
+- **Global Cooperatives**: Equal ownership regardless of local currency or economic conditions
+- **Cross-Border Collaboration**: Projects spanning multiple nations with automatic currency handling
+- **Economic Integration**: Seamless integration of different national economic systems
+
+This implementation demonstrates how multiple sovereign networks with independent denominations can coexist while guaranteeing absolute equality for all participants globally.
 
 Universal Equidistributed Blockchain (demo implementation with exact arithmetic)
 
