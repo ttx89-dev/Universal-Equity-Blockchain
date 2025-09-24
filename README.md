@@ -7,7 +7,7 @@
 
 ## Overview
 
-aequchain is a groundbreaking implementation of a **Universal Equidistributed Blockchain (UEB)** that enables multiple nations, multiple business networks, and their own currencies to coexist on a single blockchain while maintaining **100% financial equality** for every member. It represents a new paradigm in economic systems where monetary transactions become needless within the network.
+aequchain is a "break"through implementation of a **Universal Equidistributed Blockchain (UEB)** that enables multiple nations, multiple business networks, and their own currencies to coexist on a single blockchain while maintaining **100% financial equality** for every member. It represents a new paradigm in economic systems where monetary transactions become needless within the network.
 
 ## 🌍 Revolutionary Capabilities
 
