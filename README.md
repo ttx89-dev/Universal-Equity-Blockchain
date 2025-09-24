@@ -1,4 +1,4 @@
-a# aequchain — Universal Equidistributed Blockchain
+# aequchain — Universal Equidistributed Blockchain
 
 [![Julia](https://img.shields.io/badge/Julia-1.8+-blue.svg)](https://julialang.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
