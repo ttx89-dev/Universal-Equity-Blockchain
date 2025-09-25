@@ -168,7 +168,9 @@ EUR_Value = Member_Value * 0.85     # Euro network
 
 2. **Run the demonstration:**
    ```bash
-   julia --project -e 'include("aequchain.jl"); aequchain.run_demo()'
+   julia aequchain.jl
+   # OR alternatively:
+   julia --project -e 'include("aequchain.jl"); run_demo()'
    ```
 
 3. **Explore the economic revolution:**

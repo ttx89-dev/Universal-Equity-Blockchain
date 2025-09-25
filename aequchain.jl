@@ -51,10 +51,10 @@ function decimal_to_rational(x::Float64, decimals::Int=4)::Rational{BigInt}
         parts = split(str_val, '.')
         integer_part = parts[1]
         fractional_part = rpad(parts[2], decimals, '0')[1:decimals]
-        numerator = BigInt(integer_part * fractional_part)
+        numerator = parse(BigInt, integer_part * fractional_part)
         denominator = BigInt(10)^decimals
     else
-        numerator = BigInt(str_val)
+        numerator = parse(BigInt, str_val)
         denominator = BigInt(1)
     end
     
@@ -488,7 +488,10 @@ function process_recurring_pledges()
     current_time = now()
     for pledge in values(BLOCKCHAIN.pledges)
         if pledge.recurring && !pledge.completed
-            months_passed = round(Int, (current_time - pledge.created_at) / Month(1))
+            # Convert time difference to milliseconds and then to months
+            time_diff_ms = current_time - pledge.created_at
+            days_passed = time_diff_ms.value / (1000 * 60 * 60 * 24)  # Convert to days
+            months_passed = round(Int, days_passed / 30)  # Approximate months
             if months_passed > 0
                 auto_amount = months_passed * pledge.monthly_amount
                 if can_business_afford(pledge.creator, auto_amount)
