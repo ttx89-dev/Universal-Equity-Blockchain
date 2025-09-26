@@ -166,12 +166,14 @@ EUR_Value = Member_Value * 0.85     # Euro network
    cd Universal-Equity-Blockchain
    ```
 
-2. **Run the demonstration:**
-   ```bash
-   julia aequchain.jl
-   # OR alternatively:
-   julia --project -e 'include("aequchain.jl"); run_demo()'
-   ```
+2. **Run the software:**
+    ```bash
+    # Run the interactive CLI (recommended):
+    julia aequchain.jl
+
+    # Run the automated demo instead:
+    julia aequchain.jl demo
+    ```
 
 3. **Explore the economic revolution:**
    - Initialize the treasury (`init_treasury`)
@@ -239,6 +241,8 @@ The `run_demo()` function demonstrates:
 - **Member joining** with automatic equal distribution
 - **Multi-network creation** (USD, ZAR examples)
 - **Business establishment** with contribution systems
+- **Hiring workflow** that adds members to businesses
+- **Member & business withdrawals** demonstrating external payments under equality limits
 - **Pledge mechanisms** for both personal and business needs
 - **Internal free trade** where transactions maintain perfect equality
 
