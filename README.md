@@ -7,7 +7,7 @@
 
 ## Overview
 
-aequchain is a "break"through implementation of a **Universal Equidistributed Blockchain (UEB)** that enables multiple nations, multiple business networks, and their own currencies to coexist on a single blockchain while maintaining **100% financial equality** for every member. It represents a new paradigm in economic systems where monetary transactions become needless within the network.
+aequchain is a "break"through implementation of a **Universal Equidistributed Blockchain (UEB)** that enables multiple nations, multiple business networks, and their own currencies to coexist on a single blockchain while maintaining **100% financial equality** for every member. It scales from local cooperatives to full global currency coverage, all while keeping participation free for real people. The project deliberately steers communities toward a **living-for-free reality**—see [`files/docs/vision/free-living.md`](files/docs/vision/free-living.md) for the technical pathway from equality to complete freedom from monetary dependence.
 
 ## 🌍 Revolutionary Capabilities
 
@@ -73,7 +73,7 @@ The system can automatically identifies which external dependencies are costing 
 
 ### The "Living for Free" Progression
 
-The system provides a clear mathematical path from current economic constraints to complete freedom that it could facilitate:
+The dedicated roadmap in [`files/docs/vision/free-living.md`](files/docs/vision/free-living.md) outlines how the protocol operationalizes this outcome. The summary below shows the high-level logic the codebase aims to automate:
 
 ```julia
 function can_live_for_free(member_id::String)
@@ -176,11 +176,34 @@ EUR_Value = Member_Value * 0.85     # Euro network
     ```
 
 3. **Explore the economic revolution:**
-   - Initialize the treasury (`init_treasury`)
-   - Join members with equal deposits (`join_member`)
-   - Create national and business networks (`create_network`)
-   - Establish businesses with contribution systems (`create_business`)
-   - Experience internal free trade (transfers that maintain equality)
+    - Initialize the treasury (`init_treasury`)
+    - Join members with equal deposits (`join_member`)
+    - Create national and business networks (`create_network`)
+    - Establish businesses with contribution systems (`create_business`)
+    - Experience internal free trade (transfers that maintain equality)
+
+### 🧪 Ephemeral Testnet Walkthrough (No Persistence)
+
+Everything in demo mode lives only in memory—when you exit the CLI, the blockchain vanishes. Try the in-memory consensus pipeline in about a minute:
+
+```bash
+julia --startup-file=no aequchain.jl cli
+# inside the CLI
+node_init 16 11           # start a fresh node (committee of 16, threshold 11)
+node_register alice 1000  # add a sender with integer balance
+node_register bob 800     # add a recipient
+node_pay alice bob 125    # produces send+receive blocks with quorum certs
+node_status               # shows latency, throughput, and memory headroom
+```
+
+*Tips*
+
+- `node_status` lists every registered account (up to 10) with balances plus live metrics (latency, throughput, memory projections at 4 GB and 8 GB).
+- `node_metrics [mem_gb]` provides a longer report and lets you add a custom memory target (for example `node_metrics 12`).
+- `node_blocks` and `node_qc` print the most recent canonical block JSON and quorum certificates if you need to inspect hashes.
+- Forget to register an account? `node_pay` now hints which ID is missing; just run `node_register <id> [balance]` and retry.
+
+See [`files/docs/guides/testnet-cli.md`](files/docs/guides/testnet-cli.md) for a complete step-by-step guide, troubleshooting tips, and advice on recording experiment metrics.
 
 ## 🏗️ Core Architecture
 

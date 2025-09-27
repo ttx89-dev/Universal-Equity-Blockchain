@@ -4,6 +4,12 @@ using Random
 using UUIDs
 using Printf
 
+include(joinpath(dirname(@__FILE__), "files", "src", "AequChain.jl"))
+using .AequChain
+const Canonical = AequChain.Messages
+
+const ISO_FORMAT = dateformat"yyyy-mm-ddTHH:MM:SS.sss"
+
 """aequchain.jl
 
 aequchain — Universal Equidistributed Blockchain (aequchain)
@@ -54,6 +60,41 @@ const YELLOW = "\033[33m"
 const RED = "\033[31m"
 const PROMPT_TEXT = "aequchain > "
 const FEEDBACK_MESSAGE = Ref{String}("")
+
+const LABEL_COLOR = GREY
+const VALUE_COLOR_PRIMARY = WHITE
+const VALUE_COLOR_SUBTLE = GREY
+
+format_bytes(bytes::Real) = bytes < 1024 ? @sprintf("%.0f B", bytes) :
+    bytes < 1024^2 ? @sprintf("%.2f KiB", bytes / 1024) :
+    bytes < 1024^3 ? @sprintf("%.2f MiB", bytes / 1024^2) :
+    @sprintf("%.2f GiB", bytes / 1024^3)
+
+format_ms(ms::Real) = @sprintf("%.2f ms", ms)
+format_tps(tps::Real) = @sprintf("%.2f tx/s", tps)
+
+function format_seconds(seconds::Real)
+    if seconds < 1
+        return @sprintf("%.3f s", seconds)
+    elseif seconds < 60
+        return @sprintf("%.1f s", seconds)
+    elseif seconds < 3600
+        minutes = Int(floor(seconds / 60))
+        rem_seconds = seconds - minutes * 60
+        return string(minutes, "m ", @sprintf("%.0f", rem_seconds), "s")
+    else
+        hours = Int(floor(seconds / 3600))
+        minutes = Int(floor((seconds - hours * 3600) / 60))
+        return string(hours, "h ", minutes, "m")
+    end
+end
+
+format_optional_datetime(dt::Union{Nothing,DateTime}) = dt === nothing ? "—" : Dates.format(dt, ISO_FORMAT)
+
+function print_metric_line(label::AbstractString, value::AbstractString; subtle::Bool=false)
+    value_color = subtle ? VALUE_COLOR_SUBTLE : VALUE_COLOR_PRIMARY
+    println("$(LABEL_COLOR)$(label):$(RESET) $(value_color)$(value)$(RESET)")
+end
 
 # Precision-safe conversion functions
 """Convert Float64 to Rational{BigInt} with exact decimal representation"""
@@ -200,11 +241,48 @@ const BLOCKCHAIN = BlockchainState()
 const MEMBER_COIN_VALUE_CACHE = Ref{Rational{BigInt}}(0//1)
 const MEMBER_COUNT_CACHE = Ref{Int}(0)
 const CURRENT_USER = Ref{String}("")  # Track current logged-in user
+const TESTNET_NODE = Ref{Union{Nothing,InMemoryNode}}(nothing)
 
 # Helper Functions
 # ============================================================================
+function canonicalize_value(value)
+    if value isa Dict
+        return Dict(string(k) => canonicalize_value(v) for (k, v) in value)
+    elseif value isa AbstractVector
+        return [canonicalize_value(v) for v in value]
+    elseif value isa AbstractSet
+        return [canonicalize_value(v) for v in sort!(collect(value))]
+    elseif value isa DateTime
+        return Dates.format(value, ISO_FORMAT)
+    elseif value isa Integer
+        return string(value)
+    elseif value isa AbstractFloat
+        return string(value)
+    elseif value isa Bool
+        return value
+    elseif value === nothing
+        return nothing
+    else
+        return string(value)
+    end
+end
+
 function create_block_hash(block::Block)
-    return bytes2hex(sha256(string(block.prev_hash, block.transaction.id, block.timestamp, block.validator)))
+    block_dict = Dict(
+        "prev_hash" => block.prev_hash,
+        "transaction" => Dict(
+            "id" => block.transaction.id,
+            "type" => block.transaction.type,
+            "from" => block.transaction.from,
+            "to" => block.transaction.to,
+            "data" => canonicalize_value(block.transaction.data),
+            "timestamp" => Dates.format(block.transaction.timestamp, ISO_FORMAT)
+        ),
+        "timestamp" => Dates.format(block.timestamp, ISO_FORMAT),
+        "validator" => block.validator
+    )
+    json = Canonical.canonical_json(block_dict)
+    return bytes2hex(sha256(Vector{UInt8}(codeunits(json))))
 end
 
 function add_transaction(tx::Transaction, validator::String)
@@ -782,6 +860,45 @@ end
 set_feedback(msg::AbstractString) = (FEEDBACK_MESSAGE[] = String(msg))
 clear_feedback() = (FEEDBACK_MESSAGE[] = "")
 
+function reset_testnet!()
+    TESTNET_NODE[] = nothing
+end
+
+function init_testnet_node!(; committee_size::Int=8, threshold::Int=5, epoch_seed::UInt64=UInt64(0))
+    threshold > committee_size && error("Threshold cannot exceed committee size")
+    node = InMemoryNode(NodeConfig(committee_size=committee_size, threshold=threshold, epoch_seed=epoch_seed))
+    TESTNET_NODE[] = node
+    return node
+end
+
+function ensure_testnet_node(action::String)
+    node = TESTNET_NODE[]
+    if node === nothing
+        set_feedback("Initialize testnet node first with 'node_init' to $(action).")
+        render_footer()
+        return nothing
+    end
+    return node
+end
+
+function testnet_state_root_hex(node::InMemoryNode)
+    return isempty(node.state.state_root) ? "∅" : bytes2hex(node.state.state_root)
+end
+
+function parse_uint128_value(str::String)
+    sanitized = replace(str, "_" => "")
+    parsed = tryparse(UInt128, sanitized)
+    parsed === nothing && error("Expected non-negative integer amount")
+    return parsed
+end
+
+function parse_uint64_value(str::String)
+    sanitized = replace(str, "_" => "")
+    parsed = tryparse(UInt64, sanitized)
+    parsed === nothing && error("Expected non-negative integer seed")
+    return parsed
+end
+
 function help_content_paginated()
     _, rows = get_terminal_size()
     # Reserve space for header (6 lines), "Press Enter..." (1), footer (1), some padding
@@ -818,6 +935,18 @@ function help_content_paginated()
             println("                                       $(BODY)business pledges: add 'recurring <monthly_amount>' for monthly cycles$(RESET)")
             println("  $(ACCENT)support <pledge_id> <amount>$(RESET)  $(BODY)- support pledge$(RESET)")
             println("  $(ACCENT)pledges$(RESET)                       $(BODY)- list pledges$(RESET)")
+        end,
+        () -> begin
+            println("$(ACCENT)TESTNET NODE$(RESET)")
+            println("  $(ACCENT)node_init [committee] [threshold] [seed]$(RESET) $(BODY)- start fresh in-memory node$(RESET)")
+            println("  $(ACCENT)node_register <id> [balance]$(RESET)   $(BODY)- add account to node$(RESET)")
+            println("  $(ACCENT)node_pay <from> <to> <amount>$(RESET)  $(BODY)- send integer-amount payment$(RESET)")
+            println("  $(ACCENT)node_balance [id]$(RESET)              $(BODY)- view balances (single or all)$(RESET)")
+            println("  $(ACCENT)node_status$(RESET)                    $(BODY)- summary of blocks, QCs, state root$(RESET)")
+            println("  $(ACCENT)node_metrics [mem_gb]$(RESET)          $(BODY)- latency, throughput & memory report$(RESET)")
+            println("  $(ACCENT)node_blocks [n]$(RESET)                $(BODY)- inspect latest canonical blocks$(RESET)")
+            println("  $(ACCENT)node_qc [n]$(RESET)                    $(BODY)- show recent quorum certificates$(RESET)")
+            println("  $(ACCENT)node_reset$(RESET)                     $(BODY)- clear node state$(RESET)")
         end,
         () -> begin
             println("$(ACCENT)SYSTEM$(RESET)")
@@ -889,6 +1018,17 @@ function help_content()
     println("  $(ACCENT)support <pledge_id> <amount>$(RESET)  $(BODY)- support pledge$(RESET)")
     println("  $(ACCENT)pledges$(RESET)                       $(BODY)- list pledges$(RESET)")
     
+    println("\n$(ACCENT)TESTNET NODE$(RESET)")
+    println("  $(ACCENT)node_init [committee] [threshold] [seed]$(RESET) $(BODY)- start fresh in-memory node$(RESET)")
+    println("  $(ACCENT)node_register <id> [balance]$(RESET)   $(BODY)- add account to node$(RESET)")
+    println("  $(ACCENT)node_pay <from> <to> <amount>$(RESET)  $(BODY)- send integer-amount payment$(RESET)")
+    println("  $(ACCENT)node_balance [id]$(RESET)              $(BODY)- view balances (single or all)$(RESET)")
+    println("  $(ACCENT)node_status$(RESET)                    $(BODY)- summary of blocks, QCs, state root$(RESET)")
+    println("  $(ACCENT)node_metrics [mem_gb]$(RESET)          $(BODY)- latency, throughput & memory report$(RESET)")
+    println("  $(ACCENT)node_blocks [n]$(RESET)                $(BODY)- inspect latest canonical blocks$(RESET)")
+    println("  $(ACCENT)node_qc [n]$(RESET)                    $(BODY)- show recent quorum certificates$(RESET)")
+    println("  $(ACCENT)node_reset$(RESET)                     $(BODY)- clear node state$(RESET)")
+
     println("\n$(ACCENT)SYSTEM$(RESET)")
     println("  $(ACCENT)status$(RESET)                        $(BODY)- system status$(RESET)")
     
@@ -1165,6 +1305,7 @@ function render_section(content::Function, title::String)
 end
 
 function reset_state!()
+    reset_testnet!()
     BLOCKCHAIN.treasury = Treasury()
     empty!(BLOCKCHAIN.member_coins)
     empty!(BLOCKCHAIN.networks)
@@ -1493,6 +1634,253 @@ function handle_hire_member(args::Vector{String})
     end
 end
 
+function handle_node_init(args::Vector{String})
+    try
+        committee_size = length(args) >= 2 ? parse(Int, args[2]) : 8
+        threshold = length(args) >= 3 ? parse(Int, args[3]) : max(2, ceil(Int, committee_size * 2 / 3))
+        epoch_seed = length(args) >= 4 ? parse_uint64_value(args[4]) : UInt64(0)
+        committee_size <= 0 && error("Committee size must be positive")
+        threshold <= 0 && error("Threshold must be positive")
+        init_testnet_node!(committee_size=committee_size, threshold=threshold, epoch_seed=epoch_seed)
+        set_feedback("Testnet node ready (committee=$(committee_size), threshold=$(threshold))")
+        render_footer()
+    catch e
+        println("❌ Error: ", e)
+        set_feedback("node_init failed: $(string(e))")
+        render_footer()
+    end
+end
+
+function handle_node_reset(_args::Vector{String})
+    reset_testnet!()
+    set_feedback("Testnet node cleared")
+    render_footer()
+end
+
+function handle_node_register(args::Vector{String})
+    node = ensure_testnet_node("register accounts")
+    node === nothing && return
+    if length(args) < 2
+        println("Usage: node_register <account_id> [initial_balance]")
+        return
+    end
+    account_id = args[2]
+    initial_balance = length(args) >= 3 ? parse_uint128_value(args[3]) : UInt128(0)
+    try
+        register_account!(node, account_id; initial_balance=initial_balance)
+        set_feedback("Account $account_id registered (balance $initial_balance)")
+        render_footer()
+    catch e
+        println("❌ Error: ", e)
+        set_feedback("node_register failed: $(string(e))")
+        render_footer()
+    end
+end
+
+function handle_node_pay(args::Vector{String})
+    node = ensure_testnet_node("submit payments")
+    node === nothing && return
+    if length(args) < 4
+        println("Usage: node_pay <from> <to> <amount>")
+        return
+    end
+    from = args[2]
+    to = args[3]
+    amount = parse_uint128_value(args[4])
+    try
+        result = submit_payment!(node, from, to, amount)
+        send_votes = count(identity, result.send_qc.bitmap)
+        recv_votes = count(identity, result.recv_qc.bitmap)
+        render_section("TESTNET PAYMENT") do
+            stats = metrics_snapshot(node)
+            print_metric_line("From", from)
+            print_metric_line("To", to)
+            print_metric_line("Amount", string(amount))
+            print_metric_line("Send block hash", bytes2hex(result.send_qc.block_hash))
+            print_metric_line("Receive block hash", bytes2hex(result.recv_qc.block_hash))
+            send_summary = @sprintf("%d/%d (threshold %d)", send_votes, length(result.send_qc.bitmap), result.send_qc.threshold)
+            recv_summary = @sprintf("%d/%d (threshold %d)", recv_votes, length(result.recv_qc.bitmap), result.recv_qc.threshold)
+            print_metric_line("Send QC votes", send_summary; subtle=true)
+            print_metric_line("Receive QC votes", recv_summary; subtle=true)
+            print_metric_line("Blocks produced", string(length(node.blocks)))
+            println()
+            print_metric_line("Latency", format_ms(stats.last_latency_ms); subtle=stats.last_latency_ms == 0)
+            print_metric_line("Avg latency", format_ms(stats.avg_latency_ms); subtle=true)
+            print_metric_line("Throughput", format_tps(stats.throughput_tps); subtle=true)
+            print_metric_line("Uptime", format_seconds(stats.uptime_seconds); subtle=true)
+        end
+        set_feedback("Payment recorded: $(from) → $(to)")
+        render_footer()
+    catch e
+        msg = string(e)
+        println("❌ Error: ", msg)
+        if occursin("Unknown sender", msg) || occursin("Unknown recipient", msg)
+            println("$(GREY)Hint: register both accounts first with 'node_register <id> [balance]'.$(RESET)")
+            set_feedback("node_pay: register missing account before sending")
+        else
+            set_feedback("node_pay failed: $(msg)")
+        end
+        render_footer()
+    end
+end
+
+function handle_node_balance(args::Vector{String})
+    node = ensure_testnet_node("inspect balances")
+    node === nothing && return
+    if length(args) >= 2
+        account = args[2]
+        if haskey(node.state.accounts, account)
+            render_section("NODE BALANCE") do
+                bal = node.state.accounts[account].balance
+                println("$(CYAN)$account$(RESET): $(bal)")
+            end
+        else
+            println("❌ Error: Account '$account' not found")
+            set_feedback("Unknown account '$account'")
+            render_footer()
+        end
+    else
+        render_section("NODE BALANCES") do
+            if isempty(node.state.accounts)
+                println("No accounts registered yet.")
+            else
+                for account in sort(collect(keys(node.state.accounts)))
+                    bal = node.state.accounts[account].balance
+                    println("$(CYAN)$account$(RESET): $(bal)")
+                end
+            end
+        end
+    end
+end
+
+function handle_node_status(_args::Vector{String})
+    node = ensure_testnet_node("view status")
+    node === nothing && return
+    render_section("TESTNET STATUS") do
+        stats = metrics_snapshot(node)
+        print_metric_line("Accounts", string(length(node.state.accounts)))
+        print_metric_line("Blocks", string(length(node.blocks)))
+        print_metric_line("Quorum certs", string(length(node.quorum_certs)))
+        print_metric_line("State root", testnet_state_root_hex(node); subtle=true)
+        if !isempty(node.blocks)
+            print_metric_line("Last block hash", bytes2hex(hash_block(node.blocks[end])); subtle=true)
+        end
+        if !isempty(node.state.accounts)
+            println()
+            account_names = sort(collect(keys(node.state.accounts)))
+            max_display = min(length(account_names), 10)
+            for i in 1:max_display
+                name = account_names[i]
+                bal = node.state.accounts[name].balance
+                print_metric_line("  • " * name, string(bal); subtle=true)
+            end
+            if length(account_names) > max_display
+                remaining = length(account_names) - max_display
+                print_metric_line("  …", string(remaining, " more accounts"); subtle=true)
+            end
+        end
+        println()
+        print_metric_line("Total payments", string(stats.total_payments))
+        print_metric_line("Throughput", format_tps(stats.throughput_tps))
+        print_metric_line("Avg latency", format_ms(stats.avg_latency_ms))
+        print_metric_line("Last latency", format_ms(stats.last_latency_ms); subtle=stats.last_latency_ms == 0)
+        print_metric_line("Uptime", format_seconds(stats.uptime_seconds); subtle=true)
+        print_metric_line("Last payment", format_optional_datetime(stats.last_payment_at); subtle=true)
+        println()
+        print_metric_line("Est memory", format_bytes(stats.memory.total_bytes))
+        print_metric_line("Accounts mem", format_bytes(stats.memory.account_bytes); subtle=true)
+        print_metric_line("Blocks mem", format_bytes(stats.memory.block_bytes); subtle=true)
+        print_metric_line("QCs mem", format_bytes(stats.memory.qc_bytes); subtle=true)
+        println()
+        for proj in stats.projections
+            label = @sprintf("Headroom @ %.0fGB", proj.mem_limit_gb)
+            value = string(proj.additional_payments, " payments | free ", format_bytes(proj.remaining_bytes))
+            print_metric_line(label, value)
+        end
+    end
+end
+
+function handle_node_metrics(args::Vector{String})
+    node = ensure_testnet_node("inspect metrics")
+    node === nothing && return
+    limits = [4.0, 8.0]
+    if length(args) >= 2
+        custom = parse(Float64, args[2])
+        custom > 0 && push!(limits, custom)
+    end
+    stats = metrics_snapshot(node; mem_limits=Tuple(unique(limits)))
+    render_section("TESTNET METRICS") do
+        print_metric_line("Uptime", format_seconds(stats.uptime_seconds))
+        print_metric_line("Total payments", string(stats.total_payments))
+        print_metric_line("Throughput", format_tps(stats.throughput_tps))
+        print_metric_line("Avg latency", format_ms(stats.avg_latency_ms))
+        print_metric_line("Last latency", format_ms(stats.last_latency_ms); subtle=stats.last_latency_ms == 0)
+        print_metric_line("Last payment", format_optional_datetime(stats.last_payment_at); subtle=true)
+        println()
+        print_metric_line("Est memory", format_bytes(stats.memory.total_bytes))
+        print_metric_line("Accounts mem", format_bytes(stats.memory.account_bytes); subtle=true)
+        print_metric_line("Blocks mem", format_bytes(stats.memory.block_bytes); subtle=true)
+        print_metric_line("QCs mem", format_bytes(stats.memory.qc_bytes); subtle=true)
+        println()
+        for proj in stats.projections
+            label = @sprintf("Headroom @ %.0fGB", proj.mem_limit_gb)
+            value = string(proj.additional_payments, " payments | free ", format_bytes(proj.remaining_bytes))
+            print_metric_line(label, value)
+        end
+    end
+end
+
+function handle_node_blocks(args::Vector{String})
+    node = ensure_testnet_node("inspect blocks")
+    node === nothing && return
+    try
+        count_requested = length(args) >= 2 ? max(1, parse(Int, args[2])) : 5
+        canonical_blocks = list_blocks(node)
+        render_section("NODE BLOCKS") do
+            if isempty(canonical_blocks)
+                println("No blocks produced yet.")
+                return
+            end
+            start_idx = max(1, length(canonical_blocks) - count_requested + 1)
+            for idx in start_idx:length(canonical_blocks)
+                println("$(CYAN)Block $(idx):$(RESET)")
+                println(canonical_blocks[idx])
+                println()
+            end
+        end
+    catch e
+        println("❌ Error: ", e)
+        set_feedback("node_blocks failed: $(string(e))")
+        render_footer()
+    end
+end
+
+function handle_node_quorum(args::Vector{String})
+    node = ensure_testnet_node("inspect quorum certificates")
+    node === nothing && return
+    try
+        limit = length(args) >= 2 ? max(1, parse(Int, args[2])) : 5
+        qcs = list_quorum_certs(node)
+        render_section("NODE QUORUM CERTS") do
+            if isempty(qcs)
+                println("No quorum certificates yet.")
+                return
+            end
+            start_idx = max(1, length(qcs) - limit + 1)
+            for idx in start_idx:length(qcs)
+                qc = qcs[idx]
+                votes = count(identity, qc.bitmap)
+                println("$(CYAN)QC $(idx):$(RESET) block=$(bytes2hex(qc.block_hash)) epoch=$(qc.committee_epoch) committee=$(qc.committee_id)")
+                println("  votes=$(votes)/$(length(qc.bitmap)) threshold=$(qc.threshold)")
+            end
+        end
+    catch e
+        println("❌ Error: ", e)
+        set_feedback("node_qc failed: $(string(e))")
+        render_footer()
+    end
+end
+
 # Enhanced CLI Main Loop
 # ============================================================================
 function run_minimal_cli()
@@ -1603,6 +1991,33 @@ function run_minimal_cli()
             elseif cmd == "exit_member"
                 handle_exit_member(parts)
                 display_welcome(false)
+            elseif cmd == "node_init"
+                handle_node_init(parts)
+                display_welcome(false)
+            elseif cmd == "node_reset"
+                handle_node_reset(parts)
+                display_welcome(false)
+            elseif cmd == "node_register"
+                handle_node_register(parts)
+                display_welcome(false)
+            elseif cmd == "node_pay"
+                handle_node_pay(parts)
+                display_welcome(false)
+            elseif cmd == "node_balance"
+                handle_node_balance(parts)
+                display_welcome(false)
+            elseif cmd == "node_status"
+                handle_node_status(parts)
+                display_welcome(false)
+            elseif cmd == "node_metrics"
+                handle_node_metrics(parts)
+                display_welcome(false)
+            elseif cmd == "node_blocks"
+                handle_node_blocks(parts)
+                display_welcome(false)
+            elseif cmd == "node_qc"
+                handle_node_quorum(parts)
+                display_welcome(false)
             else
                 clear_screen()
                 render_header()
@@ -1688,6 +2103,29 @@ function run_demo()
     process_recurring_pledges()
     
     print_status()
+    println()
+    println("Spinning up ephemeral testnet node with canonical hashing...")
+    node = init_testnet_node!(committee_size=4, threshold=3, epoch_seed=UInt64(42))
+    for (acct, balance) in (("founder", UInt128(600)), ("alice", UInt128(420)), ("bob", UInt128(360)), ("carla", UInt128(240)))
+        register_account!(node, acct; initial_balance=balance)
+    end
+    submit_payment!(node, "founder", "alice", UInt128(120))
+    submit_payment!(node, "alice", "bob", UInt128(75))
+    submit_payment!(node, "bob", "carla", UInt128(50))
+    canonical_blocks = list_blocks(node)
+    println("Testnet accounts: $(length(node.state.accounts)) | blocks: $(length(node.blocks)) | quorum certs: $(length(node.quorum_certs))")
+    println("Latest state root: $(testnet_state_root_hex(node))")
+    println("Latest canonical block JSON:")
+    println(canonical_blocks[end])
+    stats = metrics_snapshot(node)
+    proj4 = stats.projections[1]
+    proj8 = length(stats.projections) >= 2 ? stats.projections[2] : nothing
+    println("Averages → latency $(format_ms(stats.avg_latency_ms)) | throughput $(format_tps(stats.throughput_tps)) | uptime $(format_seconds(stats.uptime_seconds))")
+    headroom_line = "4GB headroom: $(proj4.additional_payments) payments (~$(format_bytes(proj4.remaining_bytes)) free)"
+    if proj8 !== nothing
+        headroom_line = string(headroom_line, " | 8GB headroom: $(proj8.additional_payments) payments (~$(format_bytes(proj8.remaining_bytes)) free)")
+    end
+    println("Memory → usage $(format_bytes(stats.memory.total_bytes)) | $(headroom_line)")
     println("✅ Demo: Equality maintained across five members, dual businesses, and cross-network transfers")
 end
 
